@@ -1,5 +1,5 @@
 import { findUserByEmail, updateUser, insertActivation } from "../../../../lib/db";
-import { sanitizeEmail } from "@/lib/validate";
+import { sanitizeEmail, sanitizeString } from "@/lib/validate";
 import { logSecurityEvent } from "@/lib/securityLog";
 import { createRateLimiter } from "@/lib/rateLimit";
 
@@ -17,26 +17,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, value } = req.body || {};
+    const { email, value, model } = req.body || {};
     const safeEmail = sanitizeEmail(email);
     if (!safeEmail) {
       return res.status(400).json({ error: "Valid email is required" });
     }
 
-    const user = await updateUser(safeEmail, {
-      unlimited: !!value,
-      unlimitedAt: value ? Date.now() : null,
-    });
+    let updates;
+    if (model !== undefined) {
+      const safeModel = sanitizeString(model, 20) || "";
+      const active = safeModel !== "";
+      updates = {
+        unlimited: active,
+        unlimitedAt: active ? Date.now() : null,
+        model: safeModel,
+      };
+      if (active) {
+        await insertActivation({ email: safeEmail, model: safeModel, activatedAt: Date.now() });
+      }
+      logSecurityEvent("admin_model_selected", { email: safeEmail, model: safeModel });
+    } else {
+      updates = {
+        unlimited: !!value,
+        unlimitedAt: value ? Date.now() : null,
+      };
+      if (value) {
+        await insertActivation({ email: safeEmail, activatedAt: Date.now() });
+      }
+      logSecurityEvent("admin_unlimited_toggled", { email: safeEmail, value: !!value });
+    }
+
+    const user = await updateUser(safeEmail, updates);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-
-    if (value) {
-      await insertActivation({ email: safeEmail, activatedAt: Date.now() });
-    }
-
-    logSecurityEvent("admin_unlimited_toggled", { email: safeEmail, value: !!value });
 
     return res.status(200).json({ user });
   } catch {

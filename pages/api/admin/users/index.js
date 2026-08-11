@@ -31,6 +31,7 @@ export default async function handler(req, res) {
         photoURL: sanitizeString(photoURL || "", 500),
         unlimited: false,
         unlimitedAt: null,
+        model: "",
         createdAt: Date.now(),
       };
 

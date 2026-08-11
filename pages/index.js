@@ -298,6 +298,19 @@ export default function ManageAdmin() {
     }
   }
 
+  async function selectModel(email, model) {
+    try {
+      await fetch("/api/admin/users/unlimited", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, model }),
+      });
+      fetchUsers();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   const filteredUsers = users.filter(
     (u) =>
       u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -1153,7 +1166,7 @@ export default function ManageAdmin() {
                                 : "bg-slate-50 text-slate-500 border border-slate-200"
                             }`}
                           >
-                            {u.unlimited ? <><IconStar /> Unlimited Access</> : "Standard (5/day)"}
+                            {u.unlimited ? <><IconStar /> {u.model === "korven" ? "Korven · Unlimited" : u.model === "fx1" ? "FX1 · Unlimited" : "Unlimited Access"}</> : u.model === "korven" || u.model === "fx1" ? `${u.model.toUpperCase()} Plan` : "Standard (5/day)"}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 truncate">{u.email}</p>
@@ -1163,6 +1176,15 @@ export default function ManageAdmin() {
                       </div>
 
                       <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <select
+                          value={u.model || ""}
+                          onChange={(e) => selectModel(u.email, e.target.value)}
+                          className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 outline-none cursor-pointer focus:border-[#2e7d32] transition-colors"
+                        >
+                          <option value="">Free Plan</option>
+                          <option value="korven">Korven ₹749</option>
+                          <option value="fx1">FX1 ₹1,100</option>
+                        </select>
                         <button
                           className={`text-xs font-semibold px-4 py-2 rounded-lg border cursor-pointer w-full sm:w-auto text-center transition-all ${
                             u.unlimited
