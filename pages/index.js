@@ -633,7 +633,7 @@ export default function ManageAdmin() {
           noindex
         />
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-5">
-          <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl p-8 shadow-lg text-center">
+          <div className="premium-card w-full max-w-sm p-8 text-center">
             <div className="w-12 h-12 bg-[#2e7d32] rounded-xl flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl">A</div>
             <h1 className="text-slate-800 text-xl font-bold mb-1">Admin Panel</h1>
             <p className="text-slate-500 text-sm mb-6">Server-side secure login</p>
@@ -743,7 +743,7 @@ export default function ManageAdmin() {
             <div>
               {/* Empty state alert if no visits have been logged yet */}
               {analytics && analytics.pageViewsCount === 0 && (
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-6 flex items-start gap-3 text-blue-900 shadow-sm">
+                <div className="premium-card p-5 mb-6 flex items-start gap-3 text-blue-900">
                   <svg className="w-5 h-5 stroke-current flex-shrink-0 mt-0.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <line x1="12" y1="16" x2="12" y2="12" />
@@ -762,7 +762,7 @@ export default function ManageAdmin() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* 1. Analytics Overview (Amber/Orange - .big) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] big shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] big p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -796,7 +796,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 2. Site Traffic Graph (Green - .topno) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] topno shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] topno p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -818,7 +818,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 3. Pages Section (Purple - .violet) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] violet shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] violet p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -856,7 +856,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 4. Devices Section (Blue - .small) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] small shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] small p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -873,7 +873,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 5. Countries Section (Green - .topno) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] topno shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] topno p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -906,7 +906,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 6. Browsers Section (Blue - .small) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] small shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] small p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -942,7 +942,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 7. Real-time Section (Amber/Orange - .big) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] big shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] big p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5 animate-ping"></div>
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
@@ -967,7 +967,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 8. Engagement Metrics (Purple - .violet) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] violet shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] violet p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -997,7 +997,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 9. Social Media Traffic (Purple - .violet) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] violet shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] violet p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -1052,7 +1052,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 10. Referral Traffic (Green - .topno) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] topno shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] topno p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -1107,7 +1107,7 @@ export default function ManageAdmin() {
                 </div>
 
                 {/* 11. Organic Traffic (Blue - .small) */}
-                <div className="relative overflow-hidden rounded-2xl p-5 border border-slate-100 flex flex-col justify-between min-h-[230px] small shadow-sm">
+                <div className="premium-card flex flex-col justify-between min-h-[230px] small p-5">
                   <div className="dot w-2 h-2 rounded-full absolute top-5 right-5"></div>
                   <div className="blob absolute -right-6 -bottom-6 w-20 h-20 rounded-full pointer-events-none"></div>
                   <div>
@@ -1165,7 +1165,7 @@ export default function ManageAdmin() {
             </div>
           ) : activeTab === "users" ? (
             /* User Management Panel */
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 max-w-4xl mx-auto">
+            <div className="premium-card p-6 max-w-4xl mx-auto">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">User Accounts List</h2>
@@ -1182,7 +1182,7 @@ export default function ManageAdmin() {
               </div>
 
               {showAdd && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6 transition-all duration-300">
+                <div className="premium-card p-5 mb-6 transition-all duration-300">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Add New Account</h3>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <input
@@ -1235,7 +1235,7 @@ export default function ManageAdmin() {
                   filteredUsers.map((u) => (
                     <div
                       key={u.email}
-                      className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                      className="premium-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -1284,7 +1284,7 @@ export default function ManageAdmin() {
             </div>
           ) : activeTab === "payments" ? (
             /* Payments Management Panel */
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 max-w-6xl mx-auto">
+            <div className="premium-card p-6 max-w-6xl mx-auto">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Payment Orders</h2>
@@ -1299,15 +1299,15 @@ export default function ManageAdmin() {
                   <p className="text-2xl font-extrabold mt-1">₹{totalEarnings.toLocaleString("en-IN")}</p>
                   <p className="text-[11px] text-emerald-200 mt-0.5">{verifiedPayments.length} successful {verifiedPayments.length === 1 ? "payment" : "payments"}</p>
                 </div>
-                <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
-                  <p className="text-xs font-semibold text-slate-500">Verified Orders</p>
+                <div className="premium-card p-5">
+                  <p className="text-xs font-semibold text-slate-600">Verified Orders</p>
                   <p className="text-2xl font-extrabold text-green-700 mt-1">{verifiedPayments.length}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Successful payments</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Successful payments</p>
                 </div>
-                <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
-                  <p className="text-xs font-semibold text-slate-500">Pending Orders</p>
+                <div className="premium-card p-5">
+                  <p className="text-xs font-semibold text-slate-600">Pending Orders</p>
                   <p className="text-2xl font-extrabold text-amber-600 mt-1">{pendingPayments.length}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Awaiting payment / verification</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Awaiting payment / verification</p>
                 </div>
               </div>
 
@@ -1362,7 +1362,7 @@ export default function ManageAdmin() {
                     return (
                       <div
                         key={p.order_id}
-                        className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
+                        className="premium-card p-4"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="min-w-0 flex-1">
@@ -1441,7 +1441,7 @@ export default function ManageAdmin() {
                 <p className="text-sm text-slate-500 mt-1">Manage global maintenance mode for all users.</p>
               </div>
 
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-6">
+              <div className="premium-card p-6 space-y-6">
                 {/* Toggle Switch */}
                 <div className="flex items-center justify-between">
                   <div>
