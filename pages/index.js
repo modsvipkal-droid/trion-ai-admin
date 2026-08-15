@@ -133,6 +133,7 @@ export default function ManageAdmin() {
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("analytics"); // "analytics", "users", "payments", or "settings"
+  const [paymentFilter, setPaymentFilter] = useState("pending"); // "pending" | "verified"
   const [maintenance, setMaintenance] = useState({ enabled: false, title: "", message: "", eta: "" });
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = useState("");
@@ -213,6 +214,31 @@ export default function ManageAdmin() {
     }
   }
 
+  async function deletePayment(orderId) {
+    if (!window.confirm("Delete this payment order? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/payments?orderId=${encodeURIComponent(orderId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchPayments();
+      } else {
+        window.alert(data.error || "Failed to delete payment order");
+      }
+    } catch (e) {
+      console.error(e);
+      window.alert("Failed to delete payment order");
+    }
+  }
+
+  const pendingPayments = payments.filter((p) => p.status !== "VERIFIED");
+  const verifiedPayments = payments.filter((p) => p.status === "VERIFIED");
+  const totalEarnings = verifiedPayments.reduce(
+    (sum, p) => sum + (Number(p.paid_amount) || Number(p.amount) || 0),
+    0
+  );
+
   const filteredPayments = payments.filter((p) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -223,6 +249,10 @@ export default function ManageAdmin() {
       (p.model_name || p.model_id || "").toLowerCase().includes(q)
     );
   });
+
+  const displayedPayments = filteredPayments.filter((p) =>
+    paymentFilter === "verified" ? p.status === "VERIFIED" : p.status !== "VERIFIED"
+  );
 
   async function fetchMaintenance() {
     try {
@@ -1262,8 +1292,27 @@ export default function ManageAdmin() {
                 </div>
               </div>
 
+              {/* Total Revenue */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-emerald-600 to-green-700 text-white rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-semibold text-emerald-100">Total Earnings (Verified)</p>
+                  <p className="text-2xl font-extrabold mt-1">₹{totalEarnings.toLocaleString("en-IN")}</p>
+                  <p className="text-[11px] text-emerald-200 mt-0.5">{verifiedPayments.length} successful {verifiedPayments.length === 1 ? "payment" : "payments"}</p>
+                </div>
+                <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-semibold text-slate-500">Verified Orders</p>
+                  <p className="text-2xl font-extrabold text-green-700 mt-1">{verifiedPayments.length}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Successful payments</p>
+                </div>
+                <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-semibold text-slate-500">Pending Orders</p>
+                  <p className="text-2xl font-extrabold text-amber-600 mt-1">{pendingPayments.length}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Awaiting payment / verification</p>
+                </div>
+              </div>
+
               {/* Search */}
-              <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2 mb-6 focus-within:border-slate-300 border-solid">
+              <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2 mb-4 focus-within:border-slate-300 border-solid">
                 <IconSearch />
                 <input
                   type="text"
@@ -1274,21 +1323,38 @@ export default function ManageAdmin() {
                 />
               </div>
 
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-xs text-slate-500 font-semibold">{filteredPayments.length} payment orders</p>
-                <div className="flex gap-4 text-xs text-slate-500">
-                  <span>Verified: <strong className="text-[#2e7d32]">{payments.filter(p => p.status === "VERIFIED").length}</strong></span>
-                  <span>Pending: <strong className="text-amber-600">{payments.filter(p => p.status === "PENDING").length}</strong></span>
-                </div>
+              {/* Pending / Verified tabs */}
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <button
+                  onClick={() => setPaymentFilter("pending")}
+                  className={`text-xs font-semibold px-4 py-2 rounded-lg border transition-all cursor-pointer ${
+                    paymentFilter === "pending"
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  Pending ({pendingPayments.length})
+                </button>
+                <button
+                  onClick={() => setPaymentFilter("verified")}
+                  className={`text-xs font-semibold px-4 py-2 rounded-lg border transition-all cursor-pointer ${
+                    paymentFilter === "verified"
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  Verified ({verifiedPayments.length})
+                </button>
+                <p className="text-xs text-slate-400 ml-auto">{displayedPayments.filter((p) => paymentFilter === "verified" ? p.status === "VERIFIED" : p.status !== "VERIFIED").length} {paymentFilter === "verified" ? "verified" : "pending"} orders</p>
               </div>
 
               <div className="space-y-3">
-                {filteredPayments.length === 0 ? (
+                {displayedPayments.length === 0 ? (
                   <div className="text-center text-slate-400 py-16 border border-dashed border-slate-200 rounded-xl">
-                    <p className="text-sm">{payments.length === 0 ? "No payment orders created yet" : "No matching orders found"}</p>
+                    <p className="text-sm">{payments.length === 0 ? "No payment orders created yet" : `No ${paymentFilter} orders found`}</p>
                   </div>
                 ) : (
-                  filteredPayments.map((p) => {
+                  displayedPayments.map((p) => {
                     const verified = p.status === "VERIFIED";
                     const accessGranted = users.some(
                       (u) => u.email === p.user_email && (u.model_access || []).includes(p.model_id)
@@ -1340,8 +1406,8 @@ export default function ManageAdmin() {
                           </div>
                         </div>
 
-                        {verified && (
-                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+                          {verified ? (
                             <button
                               className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
                                 accessGranted
@@ -1352,8 +1418,15 @@ export default function ManageAdmin() {
                             >
                               {accessGranted ? "Revoke Model Access" : "Restore Model Access"}
                             </button>
-                          </div>
-                        )}
+                          ) : (
+                            <button
+                              className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-red-50 bg-red-50 text-red-600 hover:bg-red-100 transition-all cursor-pointer"
+                              onClick={() => deletePayment(p.order_id)}
+                            >
+                              Delete Order
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })
