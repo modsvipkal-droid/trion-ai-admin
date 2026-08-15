@@ -126,12 +126,13 @@ export default function ManageAdmin() {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [users, setUsers] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [search, setSearch] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("analytics"); // "analytics", "users", or "settings"
+  const [activeTab, setActiveTab] = useState("analytics"); // "analytics", "users", "payments", or "settings"
   const [maintenance, setMaintenance] = useState({ enabled: false, title: "", message: "", eta: "" });
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = useState("");
@@ -163,10 +164,12 @@ export default function ManageAdmin() {
       fetchAnalytics();
       fetchUsers();
       fetchMaintenance();
+      fetchPayments();
 
       const interval = setInterval(() => {
         fetchAnalytics();
         fetchUsers();
+        fetchPayments();
       }, 3000); // Poll every 3 seconds for live 100% real data updates
 
       return () => clearInterval(interval);
@@ -182,6 +185,44 @@ export default function ManageAdmin() {
       setUsers([]);
     }
   }
+
+  async function fetchPayments() {
+    try {
+      const res = await fetch("/api/admin/payments");
+      const data = await res.json();
+      setPayments(data.payments || []);
+    } catch {
+      setPayments([]);
+    }
+  }
+
+  async function setPaymentAccess(email, model, action) {
+    try {
+      const res = await fetch("/api/admin/payments/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, model, action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchUsers();
+        fetchPayments();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  const filteredPayments = payments.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (p.order_id || "").toLowerCase().includes(q) ||
+      (p.user_email || "").toLowerCase().includes(q) ||
+      (p.utr || "").toLowerCase().includes(q) ||
+      (p.model_name || p.model_id || "").toLowerCase().includes(q)
+    );
+  });
 
   async function fetchMaintenance() {
     try {
@@ -633,6 +674,16 @@ export default function ManageAdmin() {
                     }`}
                   >
                     <IconUsers /> User Accounts
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("payments")}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      activeTab === "payments"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <IconStar /> Payments
                   </button>
                   <button
                     onClick={() => setActiveTab("settings")}
@@ -1198,6 +1249,114 @@ export default function ManageAdmin() {
                       </div>
                     </div>
                   ))
+                )}
+              </div>
+            </div>
+          ) : activeTab === "payments" ? (
+            /* Payments Management Panel */
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 max-w-6xl mx-auto">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Payment Orders</h2>
+                  <p className="text-sm text-slate-500">All Fampay UPI orders. Verify transactions, paid amounts and model access.</p>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2 mb-6 focus-within:border-slate-300 border-solid">
+                <IconSearch />
+                <input
+                  type="text"
+                  className="flex-1 bg-transparent border-none outline-none text-slate-800 text-sm"
+                  placeholder="Search orders by order id, email, UTR or model..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs text-slate-500 font-semibold">{filteredPayments.length} payment orders</p>
+                <div className="flex gap-4 text-xs text-slate-500">
+                  <span>Verified: <strong className="text-[#2e7d32]">{payments.filter(p => p.status === "VERIFIED").length}</strong></span>
+                  <span>Pending: <strong className="text-amber-600">{payments.filter(p => p.status === "PENDING").length}</strong></span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {filteredPayments.length === 0 ? (
+                  <div className="text-center text-slate-400 py-16 border border-dashed border-slate-200 rounded-xl">
+                    <p className="text-sm">{payments.length === 0 ? "No payment orders created yet" : "No matching orders found"}</p>
+                  </div>
+                ) : (
+                  filteredPayments.map((p) => {
+                    const verified = p.status === "VERIFIED";
+                    const accessGranted = users.some(
+                      (u) => u.email === p.user_email && (u.model_access || []).includes(p.model_id)
+                    );
+                    return (
+                      <div
+                        key={p.order_id}
+                        className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <p className="text-sm font-bold text-slate-900 truncate">{p.model_name || (p.model_id || "").toUpperCase()}</p>
+                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                verified
+                                  ? "bg-green-50 text-green-700 border border-green-100"
+                                  : "bg-amber-50 text-amber-600 border border-amber-100"
+                              }`}>
+                                {verified ? "VERIFIED" : (p.status || "PENDING")}
+                              </span>
+                              {accessGranted && (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                  ACCESS: UNLOCKED
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 truncate">{p.user_email}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              Order: <strong className="font-mono">{p.order_id}</strong>
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs">
+                            <div className="text-sm font-bold text-slate-800 whitespace-nowrap">
+                              ₹{p.amount}
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              Paid: <strong className={verified && p.paid_amount >= p.amount ? "text-green-600" : "text-slate-700"}>₹{p.paid_amount != null ? p.paid_amount : "—"}</strong>
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              UTR/Trx: <strong className="font-mono">{p.utr || "—"}</strong>
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              Created: {p.created_at ? new Date(p.created_at).toLocaleString() : "—"}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              Verified: {p.verified_at ? new Date(p.verified_at).toLocaleString() : "—"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {verified && (
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+                            <button
+                              className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
+                                accessGranted
+                                  ? "bg-red-50 hover:bg-red-100 text-red-600 border-red-100"
+                                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                              }`}
+                              onClick={() => setPaymentAccess(p.user_email, p.model_id, accessGranted ? "revoke" : "restore")}
+                            >
+                              {accessGranted ? "Revoke Model Access" : "Restore Model Access"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
