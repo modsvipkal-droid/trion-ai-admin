@@ -197,20 +197,25 @@ export default function ManageAdmin() {
     }
   }
 
-  async function setPaymentAccess(email, model, action) {
+  async function setPaymentAccess(email, model, action, extra) {
     try {
+      const body = { email, model, action };
+      if (extra) Object.assign(body, extra);
       const res = await fetch("/api/admin/payments/access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, model, action }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.success) {
         fetchUsers();
         fetchPayments();
+      } else {
+        window.alert(data.error || "Action failed");
       }
     } catch (e) {
       console.error(e);
+      window.alert("Action failed");
     }
   }
 
@@ -1249,6 +1254,17 @@ export default function ManageAdmin() {
                           >
                             {u.unlimited ? <><IconStar /> {u.model === "korven" ? "Korven · Unlimited" : u.model === "fx1" ? "FX1 · Unlimited" : "Unlimited Access"}</> : u.model === "korven" || u.model === "fx1" ? `${u.model.toUpperCase()} Plan` : "Standard (5/day)"}
                           </span>
+                          {u.fx1_subscription && u.fx1_subscription.access_type === "TEMPORARY" && (
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                              u.fx1_subscription.access_status === "ACTIVE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                : "bg-red-50 text-red-600 border-red-100"
+                            }`}>
+                              {u.fx1_subscription.plan_name || "FX1"} · {u.fx1_subscription.access_status === "ACTIVE"
+                                ? `Exp: ${new Date(u.fx1_subscription.expires_at).toLocaleDateString("en-IN")}`
+                                : u.fx1_subscription.access_status}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500 truncate">{u.email}</p>
                         <p className="text-[10px] text-slate-400 mt-1">
@@ -1257,15 +1273,31 @@ export default function ManageAdmin() {
                       </div>
 
                       <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <select
-                          value={u.model || ""}
-                          onChange={(e) => selectModel(u.email, e.target.value)}
-                          className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 outline-none cursor-pointer focus:border-[#2e7d32] transition-colors"
-                        >
-                          <option value="">Free Plan</option>
-                          <option value="korven">Korven ₹749</option>
-                          <option value="fx1">FX1 ₹1,100</option>
-                        </select>
+                        {u.model === "fx1" ? (
+                          <select
+                            value={u.fx1_subscription?.plan_id || (u.fx1_subscription?.access_type === "LIFETIME" ? "fx1_lt" : "")}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (!v) return;
+                              setPaymentAccess(u.email, "fx1", "activate", { plan: v });
+                            }}
+                            className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 outline-none cursor-pointer focus:border-[#2e7d32] transition-colors"
+                          >
+                            <option value="fx1_d7">FX1 · 7 Days ₹1,000</option>
+                            <option value="fx1_m1">FX1 · 1 Month ₹3,000</option>
+                            <option value="fx1_lt">FX1 · Lifetime ₹10,000</option>
+                          </select>
+                        ) : (
+                          <select
+                            value={u.model || ""}
+                            onChange={(e) => selectModel(u.email, e.target.value)}
+                            className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 outline-none cursor-pointer focus:border-[#2e7d32] transition-colors"
+                          >
+                            <option value="">Free Plan</option>
+                            <option value="korven">Korven ₹749</option>
+                            <option value="fx1">FX1 Model</option>
+                          </select>
+                        )}
                         <button
                           className={`text-xs font-semibold px-4 py-2 rounded-lg border cursor-pointer w-full sm:w-auto text-center transition-all ${
                             u.unlimited
@@ -1368,6 +1400,11 @@ export default function ManageAdmin() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <p className="text-sm font-bold text-slate-900 truncate">{p.model_name || (p.model_id || "").toUpperCase()}</p>
+                              {p.plan_name && (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                  PLAN: {p.plan_name}
+                                </span>
+                              )}
                               <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                                 verified
                                   ? "bg-green-50 text-green-700 border border-green-100"
@@ -1384,6 +1421,12 @@ export default function ManageAdmin() {
                             <p className="text-xs text-slate-500 truncate">{p.user_email}</p>
                             <p className="text-[10px] text-slate-400 mt-1">
                               Order: <strong className="font-mono">{p.order_id}</strong>
+                              {p.access_expires_at != null && (
+                                <> · Access expires: <strong>{new Date(p.access_expires_at).toLocaleString()}</strong></>
+                              )}
+                              {p.model_id === "fx1" && p.access_type === "LIFETIME" && (
+                                <> · <strong>Lifetime access</strong></>
+                              )}
                             </p>
                           </div>
 
@@ -1408,16 +1451,62 @@ export default function ManageAdmin() {
 
                         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
                           {verified ? (
-                            <button
-                              className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
-                                accessGranted
-                                  ? "bg-red-50 hover:bg-red-100 text-red-600 border-red-100"
-                                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
-                              }`}
-                              onClick={() => setPaymentAccess(p.user_email, p.model_id, accessGranted ? "revoke" : "restore")}
-                            >
-                              {accessGranted ? "Revoke Model Access" : "Restore Model Access"}
-                            </button>
+                            <>
+                              {p.model_id === "fx1" ? (
+                                <>
+                                  <span className="text-[10px] font-semibold text-slate-400 mr-1">FX1 Plan:</span>
+                                  <button
+                                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all cursor-pointer"
+                                    onClick={() => setPaymentAccess(p.user_email, "fx1", "activate", { plan: "fx1_d7" })}
+                                    title="7 days access"
+                                  >
+                                    Activate 7 days
+                                  </button>
+                                  <button
+                                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all cursor-pointer"
+                                    onClick={() => setPaymentAccess(p.user_email, "fx1", "activate", { plan: "fx1_m1" })}
+                                    title="30 days access"
+                                  >
+                                    Activate 1 month
+                                  </button>
+                                  <button
+                                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all cursor-pointer"
+                                    onClick={() => setPaymentAccess(p.user_email, "fx1", "activate", { plan: "fx1_lt" })}
+                                    title="Lifetime access"
+                                  >
+                                    Activate Lifetime
+                                  </button>
+                                  {accessGranted && (
+                                    <>
+                                      <button
+                                        className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-all cursor-pointer"
+                                        onClick={() => setPaymentAccess(p.user_email, "fx1", "extend", { extendDays: 7 })}
+                                        title="Add 7 more days"
+                                      >
+                                        Extend +7d
+                                      </button>
+                                      <button
+                                        className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition-all cursor-pointer"
+                                        onClick={() => setPaymentAccess(p.user_email, "fx1", accessGranted ? "revoke" : "restore")}
+                                      >
+                                        {accessGranted ? "Revoke FX1" : "Restore FX1"}
+                                      </button>
+                                    </>
+                                  )}
+                                </>
+                              ) : (
+                                <button
+                                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
+                                    accessGranted
+                                      ? "bg-red-50 hover:bg-red-100 text-red-600 border-red-100"
+                                      : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                  }`}
+                                  onClick={() => setPaymentAccess(p.user_email, p.model_id, accessGranted ? "revoke" : "restore")}
+                                >
+                                  {accessGranted ? "Revoke Model Access" : "Restore Model Access"}
+                                </button>
+                              )}
+                            </>
                           ) : (
                             <button
                               className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-red-50 bg-red-50 text-red-600 hover:bg-red-100 transition-all cursor-pointer"

@@ -33,7 +33,20 @@ export default async function handler(req, res) {
         model: safeModel,
       };
       if (active) {
-        await insertActivation({ email: safeEmail, model: safeModel, activatedAt: Date.now() });
+        updates.model_access = [safeModel];
+        if (safeModel === "fx1") {
+          updates.fx1_subscription = {
+            plan_id: "fx1_lt",
+            plan_name: "Lifetime",
+            access_type: "LIFETIME",
+            access_status: "ACTIVE",
+            started_at: Date.now(),
+            expires_at: null,
+          };
+        }
+        await insertActivation({ email: safeEmail, model: safeModel, planId: safeModel === "fx1" ? "fx1_lt" : null, planName: safeModel === "fx1" ? "Lifetime" : null, activatedAt: Date.now() });
+      } else {
+        updates.model_access = [];
       }
       logSecurityEvent("admin_model_selected", { email: safeEmail, model: safeModel });
     } else {
