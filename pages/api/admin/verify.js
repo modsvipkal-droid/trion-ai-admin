@@ -1,5 +1,7 @@
 import { createRateLimiter } from "@/lib/rateLimit";
 import { logSecurityEvent } from "@/lib/securityLog";
+import crypto from "crypto";
+import { validateAdminPassword, grantAdminSession, isAdminSessionValid } from "@/lib/adminAuth";
 
 const verifyLimiter = createRateLimiter({ windowMs: 60000, max: 10, name: "admin-verify" });
 
@@ -15,7 +17,11 @@ export default function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { password } = req.body || {};
+  const { password, token } = req.body || {};
+  if (typeof token === "string" && token && isAdminSessionValid(token)) {
+    return res.status(200).json({ success: true, token });
+  }
+
   if (!password || typeof password !== "string") {
     return res.status(400).json({ success: false, error: "Password required" });
   }
@@ -26,13 +32,10 @@ export default function handler(req, res) {
     return res.status(500).json({ success: false, error: "Server configuration error" });
   }
 
-  const isValid = password.length > 0 && adminPassword.length > 0 &&
-    password[0] === adminPassword[0] &&
-    password.length === adminPassword.length &&
-    password === adminPassword;
-
-  if (isValid) {
-    return res.status(200).json({ success: true });
+  if (validateAdminPassword(password, adminPassword)) {
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+    grantAdminSession(sessionToken);
+    return res.status(200).json({ success: true, token: sessionToken });
   }
 
   logSecurityEvent("admin_verify_failed", { ip: req.ip });

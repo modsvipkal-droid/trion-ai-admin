@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { PageHead } from "@/components/SEO";
 
 const AUTH_KEY = "_mab_auth";
+const ADMIN_TOKEN_KEY = "_mab_token";
 
 const IconAnalytics = () => (
   <svg className="w-3.5 h-3.5 stroke-current flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -30,6 +31,16 @@ const IconPlus = () => (
 const IconStar = () => (
   <svg className="w-3 h-3 stroke-current flex-shrink-0 inline" fill="currentColor" viewBox="0 0 24 24" stroke="none">
     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+  </svg>
+);
+
+const IconLiveUsers = () => (
+  <svg className="w-3.5 h-3.5 stroke-current flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="7" r="4" />
+    <path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2" />
+    <path d="M17 8.5a3.5 3.5 0 100-7" />
+    <path d="M22 21v-2a3.5 3.5 0 00-3-3.46" />
+    <circle cx="18" cy="5" r="2" fill="currentColor" stroke="none" opacity="0.9" />
   </svg>
 );
 
@@ -132,13 +143,19 @@ export default function ManageAdmin() {
   const [emailInput, setEmailInput] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("analytics"); // "analytics", "users", "payments", or "settings"
+  const [activeTab, setActiveTab] = useState("analytics"); // "analytics", "users", "payments", "live" or "settings"
   const [paymentFilter, setPaymentFilter] = useState("pending"); // "pending" | "verified"
   const [maintenance, setMaintenance] = useState({ enabled: false, title: "", message: "", eta: "" });
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = useState("");
   const [adminPw, setAdminPw] = useState("");
   const inputRef = useRef(null);
+  const [adminToken, setAdminToken] = useState("");
+  const [liveData, setLiveData] = useState(null);
+  const [liveFilter, setLiveFilter] = useState("online"); // "online" | "offline" | "all"
+  const [liveSearch, setLiveSearch] = useState("");
+  const [liveDetails, setLiveDetails] = useState(null);
+  const [liveFetching, setLiveFetching] = useState(false);
 
   // Re-enable scrolling on mounting this component
   useEffect(() => {
@@ -156,6 +173,7 @@ export default function ManageAdmin() {
     if (localStorage.getItem(AUTH_KEY) === "1") {
       setAuthed(true);
       setAdminPw(localStorage.getItem("_mab_pw") || "");
+      setAdminToken(localStorage.getItem(ADMIN_TOKEN_KEY) || "");
     }
   }, []);
 
@@ -166,11 +184,13 @@ export default function ManageAdmin() {
       fetchUsers();
       fetchMaintenance();
       fetchPayments();
+      fetchLive();
 
       const interval = setInterval(() => {
         fetchAnalytics();
         fetchUsers();
         fetchPayments();
+        fetchLive();
       }, 3000); // Poll every 3 seconds for live 100% real data updates
 
       return () => clearInterval(interval);
@@ -194,6 +214,53 @@ export default function ManageAdmin() {
       setPayments(data.payments || []);
     } catch {
       setPayments([]);
+    }
+  }
+
+  async function ensureToken() {
+    let token = adminToken || localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+    if (token) return token;
+    const pw = adminPw || localStorage.getItem("_mab_pw") || "";
+    if (!pw) return "";
+    try {
+      const res = await fetch("/api/admin/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        token = data.token;
+        setAdminToken(token);
+        localStorage.setItem(ADMIN_TOKEN_KEY, token);
+      }
+    } catch {}
+    return token;
+  }
+
+  async function fetchLive() {
+    if (liveFetching && liveData) return;
+    setLiveFetching(true);
+    try {
+      const token = await ensureToken();
+      if (!token) return;
+      const res = await fetch("/api/admin/live", {
+        headers: { "x-admin-token": token },
+      });
+      if (res.status === 403) {
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        setAdminToken("");
+        setLiveFetching(false);
+        return;
+      }
+      const data = await res.json();
+      if (data && Array.isArray(data.users)) {
+        setLiveData(data);
+      }
+    } catch {
+      // transient — retry on next tick
+    } finally {
+      setLiveFetching(false);
     }
   }
 
@@ -317,6 +384,10 @@ export default function ManageAdmin() {
       if (data.success) {
         localStorage.setItem(AUTH_KEY, "1");
         localStorage.setItem("_mab_pw", pw);
+        if (data.token) {
+          localStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+          setAdminToken(data.token);
+        }
         setAuthed(true);
       } else {
         setErr(data.error || "Wrong password");
@@ -330,6 +401,7 @@ export default function ManageAdmin() {
   function logout() {
     localStorage.removeItem(AUTH_KEY);
     localStorage.removeItem("_mab_pw");
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
     setAuthed(false);
     setPw("");
   }
@@ -719,6 +791,16 @@ export default function ManageAdmin() {
                     }`}
                   >
                     <IconStar /> Payments
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("live")}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      activeTab === "live"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <IconLiveUsers /> Live Users
                   </button>
                   <button
                     onClick={() => setActiveTab("settings")}
@@ -1522,6 +1604,126 @@ export default function ManageAdmin() {
                 )}
               </div>
             </div>
+          ) : activeTab === "live" ? (
+            /* Live Users Panel */
+            <div className="premium-card p-6 max-w-6xl mx-auto">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Live Users Tracking</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Real-time presence of authenticated users from their website session heartbeats.</p>
+                </div>
+              </div>
+
+              {/* Live Users Overview */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-emerald-600 to-green-700 text-white rounded-xl p-5 shadow-sm">
+                  <p className="text-xs font-semibold text-emerald-100 flex items-center gap-1.5">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-200"></span>
+                    </span>
+                    Live Users
+                  </p>
+                  <p className="text-2xl font-extrabold mt-1">{liveData?.stats?.live ?? "…"}</p>
+                </div>
+                <div className="premium-card p-5">
+                  <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 stroke-current flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                    Total Active Sessions
+                  </p>
+                  <p className="text-2xl font-extrabold text-slate-800 mt-1">{liveData?.stats?.activeSessions ?? "…"}</p>
+                </div>
+                <div className="premium-card p-5">
+                  <p className="text-xs font-semibold text-slate-600">Last Updated</p>
+                  <p className="text-xl font-extrabold text-slate-800 mt-2">{liveData?.stats?.lastUpdatedLabel ?? "…"}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Heartbeat poll · every 3 sec</p>
+                </div>
+              </div>
+
+              {/* Search & Filter */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2 flex-1 focus-within:border-slate-300 border-solid">
+                  <IconSearch />
+                  <input
+                    type="text"
+                    className="flex-1 bg-transparent border-none outline-none text-slate-800 text-sm"
+                    placeholder="Search Gmail..."
+                    value={liveSearch}
+                    onChange={(e) => setLiveSearch(e.target.value)}
+                  />
+                </div>
+                <select
+                  className="text-xs font-semibold px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-600 outline-none cursor-pointer focus:border-[#2e7d32] transition-colors"
+                  value={liveFilter}
+                  onChange={(e) => setLiveFilter(e.target.value)}
+                >
+                  <option value="online">Online only</option>
+                  <option value="offline">Offline only</option>
+                  <option value="all">All users</option>
+                </select>
+              </div>
+
+              {/* Live user rows */}
+              <div className="space-y-3">
+                {(liveData?.users || []).length === 0 ? (
+                  <div className="text-center text-slate-400 py-16 border border-dashed border-slate-200 rounded-xl">
+                    <p className="text-sm">No active sessions detected yet</p>
+                    <p className="text-[11px] mt-1">Users appear here when they are signed into the website.</p>
+                  </div>
+                ) : (
+                  [...(liveData?.users || [])]
+                    .filter((u) => {
+                      if (liveSearch && !u.email.toLowerCase().includes(liveSearch.toLowerCase())) return false;
+                      if (liveFilter === "online") return u.status === "ONLINE";
+                      if (liveFilter === "offline") return u.status === "OFFLINE";
+                      return true;
+                    })
+                    .sort((a, b) => (b.last_seen || 0) - (a.last_seen || 0))
+                    .map((u) => {
+                      const online = u.status === "ONLINE";
+                      const fx1 = u.access?.fx1;
+                      return (
+                        <div
+                          key={`${u.user_id}_${u.session_id}`}
+                          className="premium-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => setLiveDetails(u)}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <p className="text-sm font-bold text-slate-900 truncate">{u.email || "(no email)"}</p>
+                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                online
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : "bg-slate-100 text-slate-500 border border-slate-200"
+                              }`}>
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-slate-400"}`}></span>
+                                {online ? "ONLINE" : "OFFLINE"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 truncate">Last active: {u.last_seen_label}</p>
+                            {u.last_page && (
+                              <p className="text-[10px] text-slate-400 mt-1">Current Page: <strong className="font-mono">{u.last_page}</strong></p>
+                            )}
+                            {fx1 && (
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                FX1: <strong className="text-amber-600">{fx1.plan_name || "FX1"}</strong> ·{" "}
+                                <span className={fx1.access_status === "ACTIVE" ? "text-emerald-600" : "text-red-500"}>{fx1.access_status}</span>
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 whitespace-nowrap">
+                            Session: {online ? <span className="text-emerald-600 font-semibold">Active</span> : "Inactive"}
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            </div>
           ) : (
             /* Settings Panel */
             <div className="max-w-2xl mx-auto">
@@ -1625,6 +1827,66 @@ export default function ManageAdmin() {
           )}
         </main>
       </div>
+
+      {/* Live User details modal */}
+      {liveDetails && (
+        <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-5" onClick={() => setLiveDetails(null)}>
+          <div className="premium-card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-slate-900">User Details</h3>
+              <button
+                className="text-slate-400 hover:text-slate-700 text-lg leading-none cursor-pointer"
+                onClick={() => setLiveDetails(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-slate-500 text-xs">Status</span>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${
+                  liveDetails.status === "ONLINE"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-slate-100 text-slate-500 border border-slate-200"
+                }`}>
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${liveDetails.status === "ONLINE" ? "bg-emerald-500" : "bg-slate-400"}`}></span>
+                  {liveDetails.status === "ONLINE" ? "Online" : "Offline"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-slate-500 text-xs">Gmail</span>
+                <strong className="text-xs text-slate-800 truncate max-w-[220px]">{liveDetails.email || "—"}</strong>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-slate-500 text-xs">User ID</span>
+                <strong className="font-mono text-xs text-slate-800 truncate max-w-[220px]">{liveDetails.user_id || "—"}</strong>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-slate-500 text-xs">Last Seen</span>
+                <strong className="text-xs text-slate-800">{liveDetails.last_seen_label}</strong>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-slate-500 text-xs">Current Page</span>
+                <strong className="text-xs text-slate-800 truncate max-w-[220px]">{liveDetails.last_page || "—"}</strong>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-slate-500 text-xs">Session Started</span>
+                <strong className="text-xs text-slate-800">{liveDetails.session_started_label}</strong>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 text-xs">Purchased Model</span>
+                <strong className="text-xs text-slate-800">
+                  {liveDetails.access?.korven ? "Korven" : ""}
+                  {liveDetails.access?.korven && liveDetails.access?.fx1 ? " + " : ""}
+                  {liveDetails.access?.fx1 ? `FX1 (${liveDetails.access.fx1.access_status})` : ""}
+                  {!(liveDetails.access?.korven || liveDetails.access?.fx1) ? "—" : ""}
+                </strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
