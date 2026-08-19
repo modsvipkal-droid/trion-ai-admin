@@ -1,7 +1,6 @@
 import { createRateLimiter } from "@/lib/rateLimit";
 import { logSecurityEvent } from "@/lib/securityLog";
-import crypto from "crypto";
-import { validateAdminPassword, grantAdminSession, isAdminSessionValid } from "@/lib/adminAuth";
+import { validateAdminPassword, createAdminToken, isAdminSessionValid } from "@/lib/adminAuth";
 
 const verifyLimiter = createRateLimiter({ windowMs: 60000, max: 10, name: "admin-verify" });
 
@@ -33,8 +32,7 @@ export default function handler(req, res) {
   }
 
   if (validateAdminPassword(password, adminPassword)) {
-    const sessionToken = crypto.randomBytes(32).toString("hex");
-    grantAdminSession(sessionToken);
+    const sessionToken = createAdminToken();
     return res.status(200).json({ success: true, token: sessionToken });
   }
 
