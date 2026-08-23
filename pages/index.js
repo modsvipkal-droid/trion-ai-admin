@@ -459,6 +459,19 @@ export default function ManageAdmin() {
     }
   }
 
+  async function unblockUser(email) {
+    try {
+      await fetch("/api/admin/users/unblock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      fetchUsers();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   const filteredUsers = users.filter(
     (u) =>
       u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -1309,6 +1322,8 @@ export default function ManageAdmin() {
                 <div className="flex gap-4 text-xs text-slate-500">
                   <span>Unlimited: <strong className="text-[#ff9800]">{users.filter(u => u.unlimited).length}</strong></span>
                   <span>Regular: <strong className="text-slate-700">{users.filter(u => !u.unlimited).length}</strong></span>
+                  <span>Purchased: <strong className="text-emerald-600">{users.filter(u => u.hasSuccessfulPurchase).length}</strong></span>
+                  <span>Blocked: <strong className="text-red-600">{users.filter(u => u.subscriptionBlocked).length}</strong></span>
                 </div>
               </div>
 
@@ -1345,6 +1360,31 @@ export default function ManageAdmin() {
                               {u.fx1_subscription.plan_name || "FX1"} · {u.fx1_subscription.access_status === "ACTIVE"
                                 ? `Exp: ${new Date(u.fx1_subscription.expires_at).toLocaleDateString("en-IN")}`
                                 : u.fx1_subscription.access_status}
+                            </span>
+                          )}
+                          {typeof u.subscriptionScreenVisits === "number" && !u.subscriptionBlocked && (
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                                u.subscriptionScreenVisits >= 4
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-slate-50 text-slate-500 border border-slate-200"
+                              }`}
+                              title="Subscription screen visits without purchase (limit: 5)"
+                            >
+                              Sub visits: {u.subscriptionScreenVisits}/5
+                            </span>
+                          )}
+                          {u.hasSuccessfulPurchase && (
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              Verified Purchase
+                            </span>
+                          )}
+                          {u.subscriptionBlocked && (
+                            <span
+                              className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200"
+                              title={u.blockReason || "Blocked"}
+                            >
+                              BLOCKED{u.blockedAt ? ` · ${new Date(u.blockedAt).toLocaleString("en-IN")}` : ""}
                             </span>
                           )}
                         </div>
@@ -1390,6 +1430,14 @@ export default function ManageAdmin() {
                         >
                           {u.unlimited ? "Revoke Unlimited" : "Grant Unlimited"}
                         </button>
+                        {u.subscriptionBlocked && (
+                          <button
+                            className="text-xs font-semibold px-4 py-2 rounded-lg border bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 cursor-pointer w-full sm:w-auto text-center transition-all"
+                            onClick={() => unblockUser(u.email)}
+                          >
+                            Unblock
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
